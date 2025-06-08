@@ -1,0 +1,383 @@
+﻿"ID_Zgloszenia","Data_Zgloszenia","Nazwa_Bledu","Opis_Bledu","Zalaczniki","Rozwiazanie","Produkt_i_wersja"
+"1","11.02.2025","Błąd przy otwieraniu normy technologicznej - technolodzy.","Podczas otwierania normy technologicznej wyrobu pokazuje się błąd","Treść z okna błędu: Jasne, oto tekst z okna błędu:
+
+```
+arithmetic exception, numeric overflow, or string truncation
+At procedure GG_NORMA_MAT_TREE line: 75, col: 5
+At procedure GG_NORMA_MAT_TREE line: 88, col: 5
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+At procedure GG_NORMA_MAT_TREE line: 96, col: 7
+```","1. Sprawdzamy ID artykułu ze screena:
+select artykul.ARTYKUL_ID from artykul where artykul.artykul_kod = 'WG-301-3286'
+2. Dla tego ARTYKUL_ID szukamy jego pierwszego poziomu normy materiałowej:
+select
+list(art_struktura.artykul_id)
+from art_struktura where art_struktura.artykul_id_pop = 102497
+Tu jeszcze nie widzimy, by sam WG składał się sam z siebie.
+3. Sprawdzamy więc, czy normy na kolejne dwa artykuły (drugi poziom) składają się z tych dwóch artykułów z pierwszego poziomu normy, lub samego wyrobu gotowego:
+select
+art_struktura.artykul_id
+from art_struktura where art_struktura.artykul_id_pop in (200023320,200023321) and (art_struktura.artykul_id = 102497 or
+art_struktura.artykul_id = 200023320 or
+art_struktura.artykul_id = 200023321)
+No i tu już mamy, że jeden z tych podrzędnych zawiera nadrzędny - dokładnie to nasz WG.
+Poszerzamy więc selecta, żeby sprawdzić, które to ART_STRUKTURA.ARTYKUL_ID_POP (jeden z dwóch artykułów pierwszego poziomu) ma ART_STRUKTURA.ARTYKUL_ID (a więc artykuł podrzędny), który jest naszym WG, czyli jednocześnie nadrzędnym:
+select * from art_struktura where art_struktura.artykul_id_pop in (200023320,200023321) and (art_struktura.artykul_id = 102497 or
+art_struktura.artykul_id = 200023320 or
+art_struktura.artykul_id = 200023321)
+albo od razu sprawdzamy kod i nazwę tego artykułu, żeby użytkownikowi wskazać, który zawiera który i w razie wątpliwości (np. jeśli badania nie zaczynaliśmy od samej góry od wyrobu gotowego i nie jest dla nas oczywiste, który element jest nadrzędny tak naprawdę), z którego poziomu usunąć zbędną podnormę. Ewentualnie możemy wskazać delikwenta, który dany rekord dodał/ostatnio edytował i kiedy.
+select
+artykul.artykul_id as ID_ART_ZAWIER_NADRZEDNY,
+artykul.artykul_kod as KOD_ART_ZAWIER_NADRZEDNY,
+artykul.nazwa1 as NAZWA_ART_ZAWIER_NADRZEDNY,
+art_struktura.inserted_by,
+art_struktura.ins_date,
+art_struktura.editing,
+art_struktura.edi_date
+from art_struktura
+join artykul on artykul.artykul_id = art_struktura.artykul_id_pop
+where art_struktura.artykul_id_pop in (200023320,200023321) and
+(art_struktura.artykul_id = 102497 or
+art_struktura.artykul_id = 200023320 or
+art_struktura.artykul_id = 200023321)",""
+"2","11.02.2025","Raportowanie NS","Na wydziale Szwalnia (scenariusz P4P28) “wisi” mebel NS80149, który nie jest widoczny w Swift (nie można zeskanować innego kodu, nie widać postępu czasu itp.) Równocześnie z poziomu PM nie można z nim nic zrobić.","","select * from zlec_akord_spec where ZLEC_AKORD_SPEC.zamowienia_spec_id = 80149
+Jeżeli STATUS == 1 ustawiamy na 5 i aktualizujemy STATUS_TIMESTAMP == TODAY
+W przypadku gdy STATUS == 5 aktualizujemy tylko STATUS_TIMESTAMP.",""
+"3","","Błąd: FiFo Killer 3","Błąd na scanerze FIFO-KILLER3","","W pierwszej kolejności należy sprawdzić stan magazynowy danego NS w danym magazynie, jeśli stan jest wówczas należy sprawdzić konfiguracje magazyny. Wchodzimy do definicji Magazynu i sprawdzamy czy dokument, który akurat tworzymy jest podpięty w def. magazynu. Np. tworzymy MM- z mag A - skojarzone z MM+ na magazynie B , wówczas w pierwszej kolejności sprawdzam definicję magazynu A i zakładkę ustawienia dokumentów powiązanych -dany dokument musi tam być zdefiniowany","Golden Gate "
+"4","","Nie odnaleziono naliczeń materiałowych NSa","","","W pierwszej kolejności zaglądamy do wybieranego scenariusza i danej akcji. Sprawdzamy tam  czy ustawienia scenariusza odpowiadają danemu artykułowi np  przy wydaniu materiałów KL w akcji 5200 w scenariuszu zdefiniowana jest czynność M130.01.SZY zatem ta sama czynność rozliczająca musi być ustawiona w normie materiału z Magazynu ( takiego jak w scenariuszu) w tym przypadku magazyn szwalni. Ewentualne braki uzupełnić lub poprawić , opublikować normę artykułu na najwyższym szczeblu i zmienić w naliczeniach.
+Czasami w akcji wydania surowców z magazynu błąd ten może oznaczać brak normy tkaninowej -jeśli np w  scenariuszu jest wydanie tkaniny z magazynu tkanin. W niektórych przypadkach pomimo, że komunikat mówi o naliczeniach wystarczy restart urządzenia! 
+",""
+"5","","Struktura pliku xls nie jest poprawna","","","W tym przypadku należy pobrać nowy szablon importu z Artykuł→ Narzędzia_> Import Artykułów i kliknąć  Stwórz pusty XLS. Uzupełnić nowy plik importowy i spróbować ponownie importu.
+Jeśli nadal jest problem należy zamknąć program, wyczyścić folder z plikami  ini w lokalizacji  Saturna -zazwyczaj folder ten nazwany jest nazwą użytkownika. Uruchomić exe i spróbować zaimportować nowym szablonem do importu.
+Uwaga po wyczyszczeniu ini usunięte będą widoki ustawione przez użytkownika.
+",""
+"6","","Błąd grupy wariantów","błąd “ błąd grupy wariantów artykułu….”","","Należy przejrzeć naliczenia NS z przeglądu pozycji zamówień pod skrótem klawiszowym Ctr+I. 
+Procedura sprawdza grupę wariantów na półproduktach z danego wydziału produkcyjnego, zatem należy sprawdzić jakie półprodukty są w naliczeniu na dany wydział produkcyjny oraz sprawdzić ich grupę wariantów w definicji artykułu. Wszystkie te półprodukty w obrębie danego wydziału produkcyjnego muszą mieć tą samą grupę wariantów. Jeśli nie mają należy ustawić poprawną dla wszystkich. Opublikować normę i zmienić w naliczeniach. 
+     2. Sprawdź czy inne artykuły nie mają ustawionego wydziału produkcyjnego -np. materiały jak nici ( nie powinny one w normie mieć wybranego wydziału produkcyjnego) jeśli takowy jest usuń wydział produkcyjny, opublikuj normę na najwyższym jej szczeblu i nalicz ponownie.
+",""
+"7","","SYS_WZ Próba wydania ilości większej niż w zamówieniu","błąd Próba wydania ilości większej niż w zamówieniu","","Należy przejrzeć konfiguracje dokumentów utworzonych do tej pory czy wszystkie mają właściwie zaznaczone rozliczenie ilości magazynowej ( dokument KLK nie powinien mieć tego zaznaczonego) jeśli jest zaznaczony checkbox w dokumencie KLK  w polu Rozliczenie ilości magazynowej  wówczas należy go odznaczyć. ",""
+"8","","Nie odnaleziono półproduktu w obowiązującej normie materiałowej NS","błąd o treści : Nie odnaleziono półproduktu w obowiązującej normie materiałowej NSa","","najprawdopodobniej brakuje w danym artykule przy skanowanym półprodukcie wybranego wydziału zgodnego z wydziałem używanym przez dany scenariusz skanowania. Kroki naprawcze:
+ 1. Sprawdzić jaki scenariusz jest stosowany podczas skanowania.
+ 2.  W Produkcja→ Słowniki→ Scenariusze wyszukać scenariusz o danym kodzie.
+ 3.  Sprawdzić w scenariuszu jaki wydział jest używany przy danej czynności.
+ 4. Mając numer NS  możemy w Przeglądzie pozycji zamówień pod Ctr+I (tu sprawdzane są naliczenia materiałów dla zamówionego artykułu) sprawdzić czy przy danym półprodukcie istnieje dany wydział. 5. Po ustaleniu braku wydziału lub ustawienie złego należy przejść do normy technologicznych: Technologia ->Normy technologiczne. Tu odszukujemy normy zamówionego artykułu i w pozycjach normy odszukujemy półprodukt. 6.  Zmienioną normę publikujemy i naliczamy ponownie materiały w istniejących zamówieniach.",""
+"9","","Błąd Refifo","Błąd podczas przeprowadzania procedury Refifo","","Jeśli podczas przeprowadzania procedury Refifo, która porządkuje dokumenty na magazynie otrzymamy błąd, to zostanie wyświetlona lista artykułów, których dotyczą błędy.  Taki komunikat często związany jest z sytuacją w, której dany artykuł był na magazynie ze stanem ujemnym (co nie powinno mieć miejsca).
+Dany artykuł może mieć różne numery NS. Jeśli nie znamy numeru NS wówczas należy sprawdzić wszystkie NS z tym artykułem.
+Wchodzimy w Magazyny→ Stany → Numer systemowy. Wyszukajmy wszystko a w kolumnie Artykuł wpiszmy nazwę artykułu w celu filtracji .
+Aby zobaczyć dokumenty związane z tym NS-em należy użyć skrótu klawiszowego Ctr+W
+Musimy poszukać który NS  i kiedy był na stanie magazynowym z saldem ujemnym.
+Jeśli znajdziemy stan ujemny  i wiemy w który dokument był sprawcą tego stanu, wówczas należy taki dokument odszukać w Przeglądzie Dokumentów Magazynowych i poprawić. 
+Często taki dokument jest już zaksięgowany, zatem pamiętajmy, że przed edycją należy go odksięgować. Opcja ta dostępna jest pod prawym przyciskiem myszki. Po wprowadzeniu zmian księgujemy go ponownie.
+Ponownie wykonujemy Refifo na tym artykule i sprawdzamy czy jest dobrze i nie wyświetla błędów.
+",""
+"10","","Nie mogę usunąć limitu","Nie mogę usunąć limitu","","W systemie nie ma Dokumentów PW na podstawie limitu, ani zleceń produkcyjnych. Limit miał status 20, ale został zmieniony na 10.
+Chcę usunąć ten limit z poziomu Przeglądu limitów.
+Niestety nie jest to możliwe. W system istnieje zabezpieczenie uniemożliwiające kasowanie limitów dla serii, które mają status 20 i więcej. Serie o tym statusie traktowane są jako ostateczne i nie powinny być zmieniane.
+W tym przypadku należy wyplanować pozycje limitów.
+",""
+"11","6.11.2024","Multiple rows in sigleton select","SCREEN '' Multiple rows in sigleton select''","","select limit.limit_kod,count(limit_id) from limit group by 1 having count (limit_id)>1
+Przyczyną były zdublowane 3 kody limitów, które założyło NP.
+
+109490/NMD/01
+109708/NMD/02
+109772/KM/01
+
+Zmieniliśmy kody tych założonych w NP dodając ''.'' na końcu.","LGA 3.64.1"
+"12","04.02.2025","KK+ brak automatycznego przypisywania ceny z ostatniego przychodu","Na magazynie 311-02-AF przy dodawaniu pozycji na dokument KK+ nie podpowiada się cena.
+Ustawienia KK+ wydają się ok - cena powinna być z ostatniego przychodu.
+
+przykładowy artykuł: H263501
+","","Nie znajduje ceny ponieważ w konfiguracji dokumentów na tym magazynie żaden dokument przychodowy nie ma ustawionego checkbox’a “Dok cenotwórczy” - po tym jest sprawdzane z których rodzajów dokumentów ma brać cenę.","GM 65.2024.50.1"
+"13","06.05.2024","Brak kursu walut","Przy próbie zafakturowania z data dzisiejsza pojawia się komunikat o braku kursu. Tabeli kursów brakuje od dnia 02.05.24. Aplikacja KursyWalut nie pobiera kursów","","Aplikacja ustawia zakres obowiązywania pobranej tabeli w ten sposób, że, jeśli nie jest to piątek, to datę obowiązywania DO ustawia na północ tego samego dnia, więc dla 02.05., który był czwartkiem, nie był ustawiony dłuższy zakres obowiązywania tabeli. W piątek, z racji, że w tym roku wypadło tam święto, tabela nie została pobrana, a 06.05 zgłoszenie było przed 12:00, więc jeszcze przed publikacją kursu przez NBP na poniedziałek oraz przed następującym po tej publikacji kolejnym uruchomieniem aplikacji Kursy Walut.
+
+Na taką okoliczność dajemy klientom możliwość wydłużenia okresu, o który chcą się cofnąć przy pobieraniu kursu do wystawianej faktury - w tabeli USTAWIENIA można dodać rekord: 
+50 048 ID = 1 wraz z opisami (krótki i długi opis) 
+Domyślnie, jeśli rekordu nie ma, procedura przyjmuje wartość 1, więc pobiera kurs z dnia poprzedniego. W ID wystarczy ustawić pożądaną ilość dodatkowych dni wstecz, dla których szukamy kursów, a wybrany zostanie najnowszy znaleziony w tym zakresie","KURSY WALUT 26.1.47.17892"
+"14","13.05.2024","Błąd podglądu/wydruku zamówienia zakupu","Przy próbie wydruku/podglądu zamówienia zakupu pojawia się komunikat jak w załączniku. 
+Brak możliwości zapisu zamówienia do pliku pdf.
+","tekst z okna błędu : ''qryPrintMe: Field 'EMAIL_ADDRESS_SOURCE' not found'","Dodanie brakującej kolumny do tabeli PRINT_ME. ","Golden Gate 60.2024.19.26"
+"15","14.05.2024","NP - Bład publikacji normy materiałowej","Błąd podczas próby publikacji normy materiałowej","tekst z okna błędu : Could not convert variant of type (UnicodeString) into type (Integer)","Wyczyszczenie plików INI użytkownika","Golden Gate 60.2024.19.26"
+"16","17.05.2024","Błąd importu pozycji w dokumencie magazynowym","Nie działa import pozycji w dokumentach magazynowych.","Nie można utworzyć dokumentu skojarzonego z NS na magazynie bez obsługi NS","Uporządkowanie stanów wg NS w definicji magazynu.","Golden Gate 60 2024 20 29"
+"17","02.04.2025","Błąd numeracji dokumentów magazynowych","Na magazynie “MSIT” wysypała się numeracja dokumentów magazynowych.","","1.  utworzono dokumenty rodzaju 272 i 275 na kwiecień
+2. Zmieniono daty na marzec i NUMER nadano  ręcznie zgodnie z autonumeracją
+3. Nie zmieniono NUMER_KOL, więc jako pierwszy dokument z kwietnia miał NUMER_KOL = 1
+4. Kolejne utworzone dokumenty na marzec  zgodnie z NUMER_KOL z poprzednich marcowych dokumentów uzyskać numer, który ręcznie zajęto przeniesionym dokumentem,
+","Golden Gate 52.2023.48.4"
+"18","02.01.2024","Export problem przy wpisywaniu zamówienia - UPDATE 58 wersja bazy","Pojawiają się komunikaty o błędach podczas wprowadzania zamówienia","Nie został określony VAT dla tego artykułu' 'Please make screenshot and send it to ITM 1,1a,1b,1c,2  1st problem : List index out of bounds (-1) 2nd problem : No user transaction is currently in progress.","Na Państwa bazie ktoś usunął definicje wartości VAT, do których odwołuje się powiązanie vat opisu w definicji artykułu i vat sposobu z definicji klienta. Dla powiązania
+EXPORT (opis w artykule) - Sprzedaż zagraniczna (sposób w kliencie)
+
+ustawiona była WARTOSC_VAT_ID = 7, która nie istniała w tabeli VAT_WARTOSCI, więc ani nie wyświetlała się ta para w aplikacji w opcji Vat-powiązania, ani nie działało pobieranie VATu przy wyborze artykułu dla tego klienta. Poprawiłem tę wartość na istniejącą dla zerowego VATu UE, czyli WARTOSC_VAT_ID = 2 również dla pary EXPORT-EXPORT. Nie dotykam się natomiast ustawienia dla pary Kraj-VAT obniżony, gdzie ustawioną w tej chwili wartością jest WARTOSC_VAT_ID = 4.
+","Export 58.2023.51.5"
+"19","12.01.2024","Błąd w zmianach globalnych","Dlaczego podczas zmian globalnych wyświetla się ilość zmienionych wierszy nierówna  ilości wszystkich wierszy? Ilość błędów = 0. W praktyce wszystko się zmieniło, ale patrząc po tej informacji nie wiem czy wszystko jest ok.
+Tutaj zmian dokonywałem w “Wykorzystanie artykułu w normach”.
+","Screen z widoku zmian globalnych, 
+do zmiany : 8264 
+zmieniono : 7368","formatka zmian globalnych jest wspólna dla wielu opcji i w każdej z nich kontekst interpretacji tych wartości może być inny.
+W tym konkretnym przypadku wyroby gotowe, w których występuje dany artykuł - przykładowo zaznaczymy dwa wiersze z WYRÓB GOTOWY KOD:
+WG-301-0612
+WG-301-0613
+
+jednak artykułem nadrzędnym wobec naszego jest w obu tych przypadkach ARTYKUŁ NADRZĘDNY KOD:
+EL-501-000003
+
+i to w nim tak naprawdę dokonujemy zmiany, stąd mimo informacji o 2 zaznaczonych rekordach, zmiany tak naprawdę dokonujemy tylko jednej - stąd rozbieżność.
+artykuł nadrzędny EL-501-000003 użyty został jako podnorma w większej ilości wyrobów gotowych, zatem mimo zaznaczenia tylko dwóch rekordów, zmiana dokona się dla wszystkich, które taką podnormę w sobie zawierają.
+","Golden Gate 58.2024.2.57"
+"20","16.01.2024","Brak możliwości zaplanowania do zleceń produkcyjnych","NS 680763 - nie można go zaplanować do zleceń produkcyjnych na wszystkich wydziałach mimo ze jest w serii i limicie produkcyjnym na właściwych statusach. Wczoraj tura do której był zaplanowany wyjechała bez tej pozycji bo produkcja tego nie widzi. Proszę o pilne rozwiązanie problemu i sprawdzenie czy więcej takich NSów nie ma w systemie.","","procedura importu 100, która zakłada artykuły NVC_CREATE_ARTYKUL wykorzystuje do tego osobną prockę NVC_KOPIUJ_ART, podając jej na sztywno jako wzór do skopiowania artykuł ID = 28034, więc z importu PLAN_PRACY_ID musi być 1, a na tym artykule był 2
+",""
+"21","26.01.2024","Publikacja norm materiałowych","Przy zaznaczonej pewnej ilości artykułów do publikacji norm materiałowych pojawia się błąd.","","Silnik Firebird, na którym stoi baza danych, dla pola tekstowego o zmiennej długości w SQLu ma ograniczenie do maksymalnie 32 765 znaków. Pole to przetrzymuje listę ID zaznaczonych do publikacji artykułów, oddzielając każdy od siebie przecinkiem. Przy artykułach WG tworzonych na bazie NVC macie Państwo z reguły ID 5-znakowe, natomiast artykuły tworzone na bazach NPL/NMD mają generatory ID 9-znakowe, zaczynające się od 2000/4000. W związku z tym, łącznie z przecinkiem, każdy zaznaczony do publikacji artykuł, to 6-10 znaków, co przy dodatkowym ograniczeniu przez procedurę GET_PARAMS32K, do której przekazujemy całą tą listę, do równo 32 760 znaków, daje nam możliwość wyszukania NSów dla maksymalnie:
+32 760 / 6 = 5 460
+32 760 / 10 = 3 260
+
+artykułów. Przed zmianą z procedurze było to odpowiednio
+2048 / 6 = 341
+2048 / 10 = 204
+
+artykuły. W związku z tym nadal nie będą Państwo w stanie opublikować i wywołać okienka z NSami dla wszystkich zaznaczonych artykułów jednocześnie - trzeba to rozłożyć na partie po maksymalnie ok. 5460 artykułów i tego ograniczenia nie jesteśmy w stanie przeskoczyć ze względu na ograniczenia silnika bazodanowego.","Golden Gate 58.2024.4.70"
+"22","21.02.2024","Nie pobiera Vat przy fakturowaniu zamówienia","Nie pobiera Vat  podczas Fv zamówienia czyli Handel_narzędzie_fv zamówienia . Generuje się FV  bez Vat  tylko wart netto . Ale widać na filmiku nie zaciąga NIPu dopiero jak kliknę w …  MKD baza dziś na kopii robiłam przykłady ., W def artykułu jest vat w kontrahencie też okreslony vat sposoby. Bat powiązania raczej ok 
+
+Dodatkowo jesli dodaje pozycję do Fv przez f3 to vat mi się liczy ","","Na błąd składały się dwie rzeczy:
+1. Aplikacja do procedury sprawdzającej VAT pobierała nie ID kraju, tylko wartość z ZAMOWIENIA.klienci_dostawy_id
+Do naprawy tej części wystawiłem nowego exeka - za jakieś 15 minut proszę zaktualizować Saturna. Wersja 51.2024.9.3 powinna być już możliwa do ściągnięcia
+
+2. Druga sprawa, to brak powiązania VAT dla kraju Polska (KRAJE_ID = 2). Istnieje powiązanie między VAT_OPISY_ID = 2 (definicja klienta - vat krajowy ) i VAT_SPOSOBY_ID = 2 (definicja artykułu z zamówienia - vat pełny), ale jest ona zdefiniowana dla KRAJE_ID = 0, czyli BRAK, a aplikacja dostaje informację, że krajem, dla którego ma szukać VAT dla pozycji z faktury jest w tym przypadku Polska. Jeśli nie znajdujemy powiązania procedurą WYZNACZANIE_VAT, a nie znajdujemy, bo dla Polski nie ma powiazania, to pobierany jest VAT z rekordu 0 tabeli VAT_WARTOSCI, a w tym rekordzie na tej bazie są wartości zerowe dla VATu. Należy dodać powiązanie dla kraju Polska, lub przeedytować krajowe powiązania VAT,by wskazywały Polskę, nie BRAK.","Golden Gate 28.51.20.19862"
+"23","22.02.2024","Błąd podczas tworzenia zamówienia zakupu.","Podczas tworzenia zamówienia zakupu są dwie niepożądane zachowania systemu:
+Pierwsza:
+Dodajemy pozycję F3 (1)
+Wypełniamy kod (2)
+Ilość i cenę (2)
+Zaznaczamy Utwórz następny (2)
+Zapisz
+Dodajemy ofertę na ten artykuł (3)
+Wypełniamy i tworzymy ofertę
+Wyskakuje nam okno nowej pozycji (4)
+Pod spodem mamy schowane okno. (5)
+Jeżeli wpiszemy w oknie nowej pozycji kod w pole artykuł i przyciśniemy Enter, żeby uzupełniły się pozostałe pola wyskoczy błąd (6)
+Wymagane wyłączenie Saturna z menadżera zadań.
+Drugi błąd związany z poprzednim to w momencie zapytania czy zmienić termin dostawy (5) na zamówieniu w polu Termin data już jest zmieniona na nową.
+","","Wyskakujące pytanie o datę jest  zasadne - po wybraniu kontrahenta mamy pobieraną wstępnie datę dostawy do nagłówka, a dodanie każdej kolejnej pozycji może tę datę każdorazowo przesunąć w zależności od daty dostawy w ofercie na dany artykuł. Zmiana tej daty na nagłówku z kolei wywołuje zapytanie, czy chcemy zmienić w związku z tym datę dostawy każdej indywidualnej wcześniej wprowadzonej pozycji - w szczegółach pozycji w zakładce “Terminy”.
+
+Błędem było natomiast wyświetlanie tego zapytania bez względu na zaznaczenie checkboxa “Utwórz następny” - wyświetlenie zapytania w tle i próba ponownego wywołania tego samego już wyświetlonego zapytania po dodaniu kolejnej pozycji wywoływały błąd.",""
+"24","14.03.2024","Przy próbie przeniesienia między limitami występuje błąd","Dla NS 1241477 podczas przenoszenia między listami występuje błąd jak w załączniku. Dany NS nie jest zaplanowany do żadnej karty paletowej.
+Błąd : General SQL error exception 166 KP_CANT_CHANGE_LIMIT Limit zaplanowany do karty paletowej, usun karte nastepnie przenies do innego limitu At trigger 
+","","Primavera nie korzysta z tego triggera(TBU_LIMIT_SPEC_KP) dlatego też wystąpił poniższy błąd, w przypadku firm korzystających z tego triggera system bierze pod uwagę jeśli jakikolwiek NS z tego limitu jest w karcie paletowej.",""
+"25","14.03.2024","Błąd podczas skanowania na PW","Po omyłkowym zrobieniu PW oraz późniejszy zrobieniu ZPW teraz nie można drugi raz już zrobić PW
+Wyskakuje błąd “etykieta została już zeskanowana dla tej operacji”
+NS 132454
+"," “etykieta została już zeskanowana dla tej operacji”","usunięcie błędnego wpisu w magnum_log i ponowne przyjęcie skanerem",""
+"26","14.03.2024","''Out of memory'' w przeglądzie zleceń na elementy","W opcji przegląd zleceń na elementy po zaznaczeniu pozycji i kliknięciu WorkFlow (opcja Tworzenie KP) wyskakuje błąd (załącznik)","wystąpił błąd! out of memory'","zbyt duży zakres czasowy jest problemem","Golden Gate 
+
+66.2025.11.13"
+"27","","Problem ze zmianą naliczeń z poziomu norm materiałowych","Sprawdzałem publikację i zmianę naliczeń na dwóch wyrobach i pojawia się problem. Przy próbie zmiany naliczeń jeden WG nie wyświetla się w ogóle w oknie, z kolei drugi WG wyświetla moim zdaniem powielone rekordy z zamówienia (we wcześniejszym oknie widać również powielone rekordy samych norm paczki itp). Dlaczego tak się dzieje?","","Do naliczenia wyświetlają się tylko NSy, które dla publikowanych norm mają status pomiędzy 11 a 60. Jeśli takiego NSa w danym momencie nie ma, to lista jest pusta.
+Jeśli chodzi o duble, to wyświetlają się na liście do publikacji również artykuły nadrzędne względem zaznaczonych. Jeśli dwa różne zaznaczone elementy występują w tym samym artykule nadrzędnym, to do listy ten artykuł nadrzędny trafiał dwukrotnie. ","Golden Gate 60.2024.21.36"
+"28","27.05.2024","Rozliczenie produkcji widok serii - Produkcja","W opcji “Produkcja” - “Analizy” - “Rozliczenie produkcji” po wyborze serii są trzy serie (załącznik) - proszę o przywrócenie [poprzedniego widoku (jedna seria)","","Zaktualizowano procedurę GG_ROZLICZENIE_PRODUKCJI. 
+Zgodnie z wcześniejszymi ustaleniami, lista limitów będzie tworzona od teraz tylko na podstawie dokumentów KL
+",""
+"29","19.03.2025","Niemożność przydzielenia NS-a do serii produkcyjnej","Dzisiaj zauważyłem, że następujące numery NS nie zostały załadowane do serii produkcyjnej: 219837,8,9 oraz 219841.
+
+Jak wrzucam pozycje do serii to te NS-y w ogóle się nie pokazują. Nie wiem gdzie ich szukać. Nie mogę ich wrzucić do produkcji (seria, limit, zlecenie).
+
+To jest tylko kilka pozycji zamówienia, inne się pojawiły i wrzuciłem do serii KW 13B (2025)
+","","Klient wykonał storno.","Golden Gate 51.2024.50.10"
+"30","08.07.2024","Warunki złożone - brak możliwości scrollowania listy","Na liście definicji warunku złożonego brak możliwości przewijania kolejnych pozycji. Warunek złożony: EA","","poprawiono dwie rzeczy:
+1. Literówkę powodującą, że nie działało przewijanie kółkiem myszy.
+2. Dodanie dodatkowego wiersza na wyświetlanie paska z ikoną dodawania warunku.
+","Golden Gate 60.1014.26.58"
+"31","10.07.2024","Błędne wyświetlanie załącznika do faktury zakupowej","Dzień dobry,
+Załącznik do faktury wyświetla się inaczej niż rzeczywisty wygląd faktury - Faktura ID - 300000038
+","","W związku z tym, że używany przez nas dotychczas komponent PDF jest dostarczany przez firmy trzecie w ramach środowiska programistycznego i w dostępnej dla nas wersji nie pozwala na zbyt wielką customizację, musieliśmy wprowadzić dodatkowe wykorzystanie biblioteki Acrobat Reader do otwierania podglądu załączników w formacie PDF. Jeśli Acrobat zostanie wykryty jako zainstalowany w systemie użytkownika, to podgląd zostanie wyświetlony poprawnie z użyciem tej biblioteki. Jeśli Acrobat nie zostanie wykryty, podgląd zostanie wyświetlony z użyciem dotychczas stosowanego komponentu.","Golden Gate 60.2024.27.63"
+"32","","Historia czasu - Norma materiałowa","Nie pokazuje się historia edycji czasu.
+Zapytanie w IBE pokazuje dwa rekordy ale pole w GG nic
+","","1. Odświeżanie zapytania do grida z historią w momencie zapisu zmiany w zakładce z normą czasową
+2. Poprawione zapytanie o artykuł z aktualnego poziomu normy (dotychczas historia pokazywana była tylko dla artykułu pierwszego poziomu)
+3. Dodanie w gridzie z historią kolumny ART_CZAS_ID, która była dotychczas tylko w gridzie z normą czasową. Dzięki kolumnie w Historii wiemy teraz, do jakiego wiersza zakładki normy czasowej odnosi się zmiana w Historii.
+W kwestii dodania kolumn w gridzie z historią jest to już kwestia do uzgodnienia z opiekunem - jakie kolumny z dokładnością do tego, czy chodzi o ID/KOD/OPIS. Opiekun to rozpisze jako projekt dla programistów, bo zasadniczo tego typu rzeczy nie dodajemy w ramach HD, chyba, że jak w przypadku punktu 3.  bez dodania kolumny ART_CZAS_ID cały grid Historia traci jakąkolwiek wartość informacyjną, więc zarazem rację bytu - wiadomo tylko, że nastąpiła zmiana czasu, ale na jakim artykule, dziale, stanowisku - nie było wiadomo. Dzięki kolumnie ART_CZAS_ID może w mniej wygodny sposób, ale, przełączając się między zakładkami, wszystko to można już teraz sprawdzić.
+Jeśli z kolei historia miałaby obejmować więcej rzeczy, niż tylko zmiana czasu - np. zmiana wydziału, zmiana czynności, zmiana stawki itd, tu z kolei wymagana byłaby nie tylko zmiana w trtiggerze TBU_ART_CZAS_HIST, ale również dodanie odpowiednich kolumn w tabeli ART_CZAS_HIST. Obecne kolumny w tabeli ART_CZAS_HIST są bezpośrednio dedykowane zmianie tylko i wyłącznie czasu - CZAS_OLD i CZAS_NEW, a już nie np. zmianie ilości/stawki/czynności/wydziału… . Analogiczne tabele z historią zmian - np. historia zmian na NSie - są raczej konstruowane w ten sposób, że mamy kolumny old i new VALUE plus dodatkowa kolumna z informacją precyzującą, czego dokładnie dotyczyła zmiana ze starej wartości na nową. Tu również wymagany byłby task zlecony programistom przez dział wdrożeń.
+EDIT: Wydaje mi się jednak, że ograniczenie się tylko do zmian samego czasu, to efekt wyjścia z założenia, że dotychczasowe wiersze nie będą raczej w kółko edytowane, tylko w przypadku zasadniczych zmian w normie dodawany będzie nowy rekord z nowym okresem obowiązywania normy.",""
+"33","","błąd MPK","Podczas dodawania pozycji w fakturze zakupowej wyświetla się poniższy błąd.
+violation of FOREIGN KEY constraint “FK_FAK_PZ_SPEC_4”
+on table “FAK_PZ_SPEC”
+Foreign key reference target does not exist
+Problematic key value is (“SLO_MPK_ID”=-1)
+","","Nie mogę odtworzyć błędu - nie mogę wybrać jako MKP wartośći BRAK ani z MKP_SLO_ID = 0, ponieważ na bazie jest jako NIEAKTYWNE = 1, ani z wartością MPK_SLO_ID = -1, ponieważ taki rekord nie występuje na bazie ze screena, choć, na WZORze jak najbardziej. Zakładam, że w sytuacji, jaką miałaś na screenie, wymagany był ten rekord - może w czasie pomiędzy wybraniem, a zapisem nastąpiło właśnie usunięcie rekordu",""
+"34","15.07.2024","Zdublowane wyświetlanie ilości wydanej","W widoku Rozliczenie produkcji dublują się pozycje, które zostały przesunięte na serię. Przykład seria SN24B28244.","","Zaktualizowanie procedury GG_ROZLICZENIE_PRODUKCJI.",""
+"35","18.07.2024","Dokumenty KL tworzone na ModPanelu nie zasilają produkcji","Dokumenty KL tworzone na ModPanelu na wydziale Rozkrój nie zasilają produkcji. W module Rozliczenie produkcji ilości dla płyty wynoszą 0. 
+Ilości naliczają się dopiero po ponownym odksięgowaniu i zaksięgowaniu dokumentów KL.
+Przykład seria SN24F15260. Jak widać na poniższych zrzutach dokumenty KL są utworzone i zatwierdzone, ilość wydana wynosi 0.
+","","Brak było wpisów do tabeli MAT_PROD_SPEC, a te powstają, kiedy KLkę księgujemy (wcześniej musi istnieć jako niezaksięgowana). W związku z tym, że definicja dokumentu miała ustawione autoksięgowanie, dokument powstawał już jako zaksięgowany i trigger nie dokonywał wpisów do tabeli, ponieważ nie był aktywowany przez zmianę. 
+Poprawiłem triggery, aby nowo tworzone KLki również przy autoksięgowaniu wywoływały trigger dokonujący wpisów do tabeli MAT_PROD_SPEC oraz wykonałem aktualizację dokumentów KL, ustawiając wartość MAG_DOK_NAG.PIP = 1 (co zachodziło przy ponownym zaksięgowaniu i wywoływało trigger), tam gdzie było to wymagane.
+","Golden Gate 60.2024.28.72"
+"36","17.07.2024","LIV- brak historii zamówienia (SP-3774)","Living live - brak historii zamowienia, czyżby ustawienia były wylączone?
+task: SP-3774
+","","Brak uzupełnionej tabeli KODY_OPERACJI - w momencie, kiedy na podstawie kodu zapytanie do CTRL+W próbowało INNER joinem pobrać opis, z braku rekordu z takim kodem rekord nie może być wyświetlony. Przy okazji okazało się, że zapytanie idzie nie tylko na spece, ale jednak i na historię nagłówka.
+KODY_OPERACJI uzupełniłem już na kopii bazy
+","Golden Gate 60.2024.28.72"
+"37","14.08.2024","Bardzo długie uruchamianie Saturn","Po kliknięciu “Połącz”, aplikacja uruchamia się około 45 sek. Proszę o sprawdzenie w czym tkwi problem.","","Niedostępny jest WebService konfiguracji centrum kosztów. Bardzo proszę o restart Web Service'u.","Golden Gate 
+
+60.2024.28.72"
+"38","19.07.2024","Zamówienie zakupu błedna wartość netto - Zaopatrzenie
+","W zamówieniu zakupu po kliknięciu w linię pozycji i wyświetleniu w oknie podsumowania, błędnie podaje wartość netto (załącznik). Kontynuacja zgłoszenia HD-14438","","W związku z tym, że przykład z taska zbiegiem okoliczności podawał na wzór artykuł o tej samej jednostce głównej, co jednostce dostawy, więc ilość w jednostce zamówienia i ilość w jednostce dostawy były takie same. Programista użył we wzorze ilości w jednostce dostawy, która w naszym przypadku różni się od ilości w jednostce magazynowej, stąd wynikiem było:
+19,6 / 100 * 2 = 0,392
+zamiast, zgodnie z intencją taska
+1960 / 100 * 2 = 39,2
+",""
+"39","18.03.2024","Numer obcy przy dokumentach z magazynu MWG","Mamy wysłane dokumenty z magazynu MWG do Enovy, ale nie pojawiły się numery w kolumnie numer obcy.
+Dokumenty trafiły do Enovy.
+","","W definicji magazynu blokowało ustawienie zamkniętego magazynu - data była lutowa natomiast próbowano zatwierdzić dokumenty styczniowe ( z już zamkniętego miesiąca ) po zmianie na miesiąc grudzień udało się pobrać numer obcy z Enovy",""
+"40","01.08.2024","NP - Dodanie do tury nie przypisuje miejsca rozładunku","Proszę o poprawę przypisywania kolejności rozładunku po dodaniu wyrobu gotowego do tury.
+Dodając pozycję do tury załadunkowej, której adres już istnieje w turze i ma przypisaną kolejność rozładunku to dodana pozycja ma puste pole.
+Próba edycji kolejności nie pokazuje tych pozycji z pustym polem i nie możemy dodać numeru.
+Procedura dodania powinna obejmować sprawdzenie miejsc rozładunku i jeżeli jest przypisane to powinno ją już określić, w innych przypadkach powinno dać 0.
+","","Numeracja dla już spozycjonowanego miejsca dostawy dla nowododanych pozycji listy nada się w momencie kliknięcia przycisku ZAPISZ w formatce ustalania kolejności rozładunku, czyli wystarczy w nią wejść i i wzisnąć ZAPISZ. Dodałem też odświeżenie dolnego grida, żeby po zamknięciu formatki zmiany były od razu widoczne.
+
+Co do sortowania, to tu już temat jest do przedyskutowania z opiekunem, ponieważ dział wdrożeń powinien rozpisać tu programistom większego taska na konsekwentne traktowanie sortowania tej kolumny - co najmniej między dolnym gridem planowania z pozycjami listy, a formatką ustawiania kolejności. 
+Sortowanie alfabetyczne wprowadzono prawdopodobnie dlatego, że np. w ramach dwóch miast, które miały wyjściowo kolejność rozładunku 1 i 2 po jakimś czasie chcemy dodać drugie miejsce rozładunku w mieście numer 1, dlatego klient, który zlecał dany projekt mógł mieć życzenie, by kolejność wyglądała:
+
+1 - pierwsze miejsce dostawy w mieście 1
+11 - drugie miejsce dostawy w mieście 1
+2 - pierwsze miejsce dostawy w mieście 2
+
+Ba, w ramach takiej numeracji możemy mieć i 120 miejsc dostaw w jednym dużym mieście i wciąż ze względu na 1 z przodu nasz miejsce dostawy 1120 będzie przed 2 w drugim mieście.
+
+Z tego tez powodu dokumentacja zaleca, by numerować dziesiątkami, czyli 10, 20, 30 itd, by mieć swobodę dodawania pozycji pomiędzy wcześniej ustalonymi.
+","Golden Gate 60.2024.30.76"
+"41","09.07.2024","ADRIANA - w wersji 62 brak funkcji ctrl+w i ppm-... w opcji ZAOPATRZENIE _ NARZĘDZIA_REZERWACJE","baza ADRIANA live i TEST - w wersji 62 brak funkcji w opcji: ZAOPATRZENIE-NARZĘDZIA-REZERWACJE (w wersji 60 jest)
+ppm - ustaw stan zgodny, przerezerwuj
+widok ctrl+w
+","","Na nowo dodano osobne kopie górnego grida i panelu dolnego pod CTRL+W. Pod nowego grida nie było podpięte menu PPM i nie było obsługi CTR+W dla tej nowej wersji dolnego panelu. Nie było też odświeżania kwerendy do nowego dolnego panelu przy zmianie podświetlanego wiersza.","Golden Gate 62.2024.28.12"
+"42","","Zdublowane wyświetlanie ilości wydanej","W widoku Rozliczenie produkcji dublują się pozycje, które zostały przesunięte na serię. 
+Przykład seria SN24B28244.
+","","Zaktualizowanie procedury GG_ROZLICZENIE_PRODUKCJI. Wygląda na to, że inaczej się zachowuje UNION z NULLem na bazie Interline (łączy rekordy), a inaczej na FMS.","Golden Gate 60.2024.28.72"
+"43","15.07.2024","Dokumenty KL tworzone na ModPanelu nie zasilają produkcji","Dokumenty KL tworzone na ModPanelu na wydziale Rozkrój nie zasilają produkcji. W module Rozliczenie produkcji ilości dla płyty wynoszą 0. 
+
+Ilości naliczają się dopiero po ponownym odksięgowaniu i zaksięgowaniu dokumentów KL.
+
+Przykład seria SN24F15260. Jak widać na poniższych zrzutach dokumenty KL są utworzone i zatwierdzone, ilość wydana wynosi 0.
+","","Brak było wpisów do tabeli MAT_PROD_SPEC, a te powstają, kiedy KLkę księgujemy (wcześniej musi istnieć jako niezaksięgowana). W związku z tym, że definicja dokumentu miała ustawione autoksięgowanie, dokument powstawał już jako zaksięgowany i trigger nie dokonywał wpisów do tabeli, ponieważ nie był aktywowany przez zmianę. 
+Poprawiłem triggery, aby nowo tworzone KLki również przy autoksięgowaniu wywoływały trigger dokonujący wpisów do tabeli MAT_PROD_SPEC oraz wykonałem aktualizację dokumentów KL, ustawiając wartość MAG_DOK_NAG.PIP = 1 (co zachodziło przy ponownym zaksięgowaniu i wywoływało trigger), tam gdzie było to wymagane.
+","Golden Gate 60.2024.28.72"
+"44","15.07.2024","LIV- brak historii zamówienia (SP-3774)","Living live - brak historii zamowienia, czyżby ustawienia były wylączone?
+task: SP-3774
+","","Brak uzupełnionej tabeli KODY_OPERACJI - w momencie, kiedy na podstawie kodu zapytanie do CTRL+W próbowało INNER joinem pobrać opis, z braku rekordu z takim kodem rekord nie może być wyświetlony. Przy okazji okazało się, że zapytanie idzie nie tylko na spece, ale jednak i na historię nagłówka.
+KODY_OPERACJI uzupełniłem już na kopii bazy
+","Golden Gate 60.2024.22.41"
+"45","16.07.2024","Bardzo długie uruchamianie Saturn","Po kliknięciu “Połącz”, aplikacja uruchamia się około 45 sek. Proszę o sprawdzenie w czym tkwi problem.","","Niedostępny jest WebService konfiguracji centrum kosztów. Bardzo proszę o restart Web Service'u.","Golden Gate 60.2024.28.72"
+"46","17.07.2024","SA_GM_Sprzedaż bezpośrednia_brak blokady przed zapisem z ceną 0 sprzedaży","Przy projekcie sprzedaży bezpośredniej ewidencjonowanej na koncie 311-23 dodawane było zabezpieczenie przed zapisem dokumentu WZK z ceną sprzedaży równą 0 (na innym magazynach materiałów też to obowiązywało). W załączniku przykład że zapisało dokument z ceną sprzedaży 0.
+Wygląda jakby blokada przestała działać po aktualizacji.
+","","dodanie triggera z prefixem ADF na bazę AF live
+ADF_TBIU_KONTR_WZ_CENA_0
+","GM 62"
+"47","17.07.2024","Zamówienie zakupu błedna wartość netto - Zaopatrzenie
+","W zamówieniu zakupu po kliknięciu w linię pozycji i wyświetleniu w oknie podsumowania, błędnie podaje wartość netto (załącznik). Kontynuacja zgłoszenia HD-14438","","Zlecony przez Państwa task SP-4046: [$] LIV - Jednostki cenowe w zamówieniach dostawcy
+Gotowe
+ nie precyzował, o jaką ilość chodzi we wzorze:
+(ilośc / przelicznik na j. głowną) * cena
+
+W związku z tym, że przykład z taska zbiegiem okoliczności podawał na wzór artykuł o tej samej jednostce głównej, co jednostce dostawy, więc ilość w jednostce zamówienia i ilość w jednostce dostawy były takie same. Programista użył we wzorze ilości w jednostce dostawy, która w naszym przypadku różni się od ilości w jednostce magazynowej, stąd wynikiem było:
+19,6 / 100 * 2 = 0,392
+zamiast, zgodnie z intencją taska
+1960 / 100 * 2 = 39,2
+","Golden Gate 60.2024.28.72"
+"48","22.07.2024","Mazury LIVE - wydruk etykiety wysyłkowej z limitu","gg → produkcja → limity → przegląd limitów _ stary system wydruków  → pierwszy wydruk
+mimo poprawnie zdefiniowanej normy, i wydruku w sys_dok_zas (stary system wydruków) - nie mozna wydrukować etykiety wysyłkowej na podstawie limitu produkcyjnego, baza jest nowa, więc może jest to kwestia konfiguracji
+baza live (obecnie trwają testy procesu)
+","","dodanie rekordu do tabeli SETUP, to od niego zależy, czy korzystamy z FRXa, który został użyty w tym raporcie, czy z innego FRXa - FrxEtykLista.","Golden Gate 61.2024.29.36"
+"49","26.07.2024","DAAL - artykuł informacja ''handel''","Przy próbie sprawdzenia handlu w artykuły > przegląd artykułów > artykuł informacja > handel pojawia się błąd jak w załączniku.
+Sporadycznie uda się w tej zakładce załadować pozycje handlu, jednak zazwyczaj pojawia się właśnie taki błąd. Nie udało mi się znaleźć żadnej zależności pomiędzy tym kiedy działa, a kiedy nie.
+","","Zaktualizowana została procedura SATURN_ART_INFO_FAKTURY - m.in. powiększone zostało pole “Dok. źródłowy”, by mogło wyświetlać 18 znaków. Dotychczasowe ograniczenie do 15 było przyczyną błędu.","Golden Gate 61.2024.28.35"
+"50","","Dodanie do tury nie przypisuje miejsca rozładunku","Proszę o poprawę przypisywania kolejności rozładunku po dodaniu wyrobu gotowego do tury.
+
+Dodając pozycję do tury załadunkowej, której adres już istnieje w turze i ma przypisaną kolejność rozładunku to dodana pozycja ma puste pole.
+
+Próba edycji kolejności nie pokazuje tych pozycji z pustym polem i nie możemy dodać numeru.
+
+Procedura dodania powinna obejmować sprawdzenie miejsc rozładunku i jeżeli jest przypisane to powinno ją już określić, w innych przypadkach powinno dać 0.
+","","Numeracja dla już spozycjonowanego miejsca dostawy dla nowododanych pozycji listy nada się w momencie kliknięcia przycisku ZAPISZ w formatce ustalania kolejności rozładunku, czyli wystarczy w nią wejść i i wzisnąć ZAPISZ. Dodałem też odświeżenie dolnego grida, żeby po zamknięciu formatki zmiany były od razu widoczne.
+
+Co do sortowania, to tu już temat jest do przedyskutowania z opiekunem, ponieważ dział wdrożeń powinien rozpisać tu programistom większego taska na konsekwentne traktowanie sortowania tej kolumny - co najmniej między dolnym gridem planowania z pozycjami listy, a formatką ustawiania kolejności. 
+Sortowanie alfabetyczne wprowadzono prawdopodobnie dlatego, że np. w ramach dwóch miast, które miały wyjściowo kolejność rozładunku 1 i 2 po jakimś czasie chcemy dodać drugie miejsce rozładunku w mieście numer 1, dlatego klient, który zlecał dany projekt mógł mieć życzenie, by kolejność wyglądała:
+
+1 - pierwsze miejsce dostawy w mieście 1
+11 - drugie miejsce dostawy w mieście 1
+2 - pierwsze miejsce dostawy w mieście 2
+
+Ba, w ramach takiej numeracji możemy mieć i 120 miejsc dostaw w jednym dużym mieście i wciąż ze względu na 1 z przodu nasz miejsce dostawy 1120 będzie przed 2 w drugim mieście.
+
+Z tego tez powodu dokumentacja zaleca, by numerować dziesiątkami, czyli 10, 20, 30 itd, by mieć swobodę dodawania pozycji pomiędzy wcześniej ustalonymi.","Golden Gate 60.2024.30.76"
+"51","01.08.2024","tworzenie KP reklamacje","Brak mozliwosci wygenerowania kart paletowych reklamacyjnych przy czwartej i kolejnej próbie-mimo zmiany statusu po uzyciu workflow, karta paletowa nie zostaje wygenerowana i wyskakuje załączony bład. Test wykonany na kopii.","","Poprawiłem trigger SZY_DR_WF_REKLA. 
+Restartowanie GG nie miało wpływu na występowanie tego błędu - trafiał się on wówczas, kiedy przestawiany był status WF na zleceniu, które miało więcej niż jedną pozycję. Wówczas chciały się dla każdej z tych pozycji tworzyć osobne karty paletowe, ale ID generowaliśmy tylko jedno i pod wspólnym ID próbowała się tworzyć więcej niż jedna karta.
+Z tego, co ustaliłem z Sylwią, Państwa założenia biznesowe są takie, że na jednej karcie paletowej ma być tylko jedna pozycja w specyfikacji KP, więc nie poprawiałem tego tak, by na jednej KP tworzyło się kilka pozycji, tylko tak, by każda pozycja zlecenia na elementy tworzyła osobną kartę paletową z indywidualnym ID jej nagłówka (KARTA_PALETOWA_ID).
+",""
+"52","01.08.2024","DAAL - odtwierdzanie dokumentów, okienko weryfikacji uprawnień","Od czasu do czasu zdarza się że przy próbie cofnięcia zatwierdzenia dokumentu (np. FV i WZ) nie pojawia się okno w którym należy wpisać login i hasło w celu weryfikacji uprawnień, system po prostu tak jak by wtedy nie reaguje. Problem rozwiązuje zamknięcie i ponowne uruchomienie aplikacji co widać na filmie pod poniższym linkiem. Niestety nie udało mi się wyłapać żadnej zależności tego kiedy ten problem się pojawia.
+","","Przyczyny potencjalnie przychodzą mi do głowy dwie:
+1. Z góry odrzucam taką ewentualność, ale hipotetycznie podczas pracy mogłoby dojść do zmiany ustawienia w rekordzie 1200002 tabeli SETUP, gdzie decydujemy, czy pozwalamy odksięgowywać dokumenty magazynowe. Jeśli nie pozwalamy, po odpowiedzi, że chcemy, procedura i tak kończy się wykonywać, więc efekt byłby taki, jak na filmie. Rekord ten w EDI_DATE nie nosi jednak śladów niedawnej edycji, więc to wytłumaczenie odpada.
+
+2. Znacznie bardziej prawdopodobne jest, że formatka do logowania zostaje wywołana, ale w wyniku wcześniejszej sekwencji specyficznych działań w GG nie wyskakuje na wierzchu. Dodałem więc polecenie, by była przenoszona na wierzch po wywołaniu
+",""
+"53","05.08.2024","Planowanie limitów. Błąd podczas wyszukiwania.","Możemy wyszukać elementy do zaplanowania limitów tylko do miesiąca. Zał 1
+Gdy wybieramy wartość większą iż 1 miesiąc dostajemy błąd zał 2,3,4
+","","Poprawienie procedury LIMIT_PLAN_NIEZAPLANOWANE","Golden Gate 60.2024.32.85"
+"54","05.08.2024","Problem prawidłowego wiekowania w GG","Wiekowanie zapasów z modułu GOLDEN GATE polega na wyrzucaniu błędnych danych przy danych wyrzucanych w bieżącym
+okresie( wszystkie pozycje wiekowania zbijało do okresu 30
+dni ) natomiast na koniec miesiąca po  zamknięciu był prawidłowy wydruk.
+     Dzisiaj tj. 05.08.2024 chcąc zrobić wiekowanie na dzień 31.07.2024 przykładowo na magazynie 311-05 techniczny Chełmno ul. Osnowska pokazuje błąd ( skan w załączniku ) natomiast z datą bieżącą nadal zbija wszystkie pozycje z magazynu do wiekowania do 30 dni co jest błędem.
+","","Zaktualizowanie triggera TBI_NULL_MAG_DOK_SPEC i procedurę GG_WIEKOWANIE","Golden Gate 63,2024,31,7"
+"55","","Dokumenty są w PLN faktura powstaje w EURO","Magazyn - 13 pokrowce uszyte. Zaczęliśmy sprzedawać pokrowce uszyte, wszystkie dokumenty są w PLN , definicja PLN,  wz PLN, cennik PLN, a podczas tworzenia faktury, faktura tworzy się w EURO ?
+Przykład FVMAG/24/08/011
+","","Dla ceny z dokumentu, pobierana jest waluta z dokumentu. Dla ceny z cennika i ceny z zamówienia pobierana jest waluta z zamówienia.",""
+"56","09.08.2024","NMD live - nie odświeża się booking","mimo operacji w PWT (uwolnij lub przerezerwuj) nie widac tego w głownym widoku, w pwt_spec wpis jest, ale głowny widok nie uwzględnia tych operacji , parz film, baza kopia, ale live z pewnością też (świeża kopia)","","Górny grid wyszukuje rekordy wg daty wskazanej w search panelu z MAT_PROD_SPEC.ins_date. Przeksięgowanie dokonuje tam insertów z datą dzisiejszą, więc siłą rzeczy, jeśli szukasz po dacie na 30.06., to efektów przeksięgowania nie zobaczysz. Wystarczy przestawić datę","Golden Gate 60.2024.32.86"
+"57","19.08.2024","Filtrowanie w fakturach zakupowych (dział narzędziowni)","W dziale narzędziowni nie działa filtrowanie po wszystkich działach w obiegu WF (chcąc znaleźć starą fakturę, trzeba przeszukiwać każdy dział po kolei, załącznik mp4).
+Dodanie do obiegu wysyłającego fakturę do działu narzędziowni również nie spowodowało poprawy(załącznik png).
+Aktualizacje zrobione. Wyłączenie, włączenie itd. zrobione.
+","","Zmienna w pamięci we wzorcowej formatce również nie jest czyszczona w momencie, kiedy użytkownik wykasuje zawartość pola, ale za to button “Szukaj” przed kolejnym wyszukaniem czyści pamięć z parametrów poprzedniego wyszukania. Do tej pory w fakturach zakupowych przy kolejnym wyszukaniu zmianie ulegały tylko parametry z uzupełnionych pól search panela, a pola z pustych były pamiętane. W formatce, którą dałaś do porównania “Szukaj” zachowuje się, jakby najpierw użyte było “Wyczyść”, ale tylko względem pamięci, bo zawartość pól wyszukania pozostaje i na ich podstawie odbywa się kolejne wyszukanie.","Golden Gate 60.2024.33.88"
+"58","20.08.2024","Problem z generowaniem obrazu na wydruku fr3 w aplikacji etyknrsys.exe","mamy wydruk etykiet wysyłkowych na którym po spełnieniu pełnych warunków widocznych w kodzie, wyświetla się obraz symbolu FSC.
+
+Niestety, któraś z wersji etyknrsys.exe, po jej update najprawdopodobniej, nie wyświeta tego obrazu nie wyrzucając żadnego błędu. Wygenerowanie takiego samego wydruku w aplikacji SP.exe kończy się poprawnym zadziałaniem naszych warunków tj. obraz symbolu FSC się pojawia. W załączniku widoczne obie sytuacje (FSC.png), (FSC2.png) oraz nasz plik wydruku. Prosimy o pomoc, tak aby aplikacja etyknrsys drukowała poprawnie te etykiety.
+","","W normie materiałowej na ten wyrób oznaczyli Państwo pozycje na FSC-01 tylko do druku na etykietach produkcyjnych. Aby w EtykNrSys drukowały się na wysyłkowych, ustawienie to musi być albo na wysyłkowe, albo na wszystkie. Po zmianie w normie należy normę opublikować i ponownie naliczyć NSa, ponieważ ustawienie to pobierane jest z naliczenia do konkretnego NSa - z tabeli MAG_DOK_SPEC_PRO.","EtykNrSys 29.0.20.2005"
+"59","09.09.2024","Technolog_wykorzystanie artykułu","W Technologu/Normy materiałowe art. o kodzie EUP1RCEEZ ma w normie materiałowej piankę P111186.
+Wchodząc w wykorzystanie artykułu widać iż ta pianka jest wykorzystywana w artykule o kodzie EUP1RCEEZ
+Natomiast wchodząc w drugą zakładkę ,,Wykorzystanie w wyrobach gotowych” nie ma w wykazie tego artykułu.
+","","W związku z tym, że pokazujemy tylko wyroby stojące najwyżej w hierarchii norm, a artykuł EUP1RCEEZ wchodzi jeszcze w skład norm na artykuły EUP13EEEZ i EUP1ZKEEZ, to te dwa są pokazywane. Problem z odfiltrowaniem był jednak taki, że pobieraliśmy do grida pole ARTYKUL.ARTYKUL_KOD, które jest stałej długości, więc filtrować do tej pory trzeba było albo po JAK z % na końcu, albo po RÓWNY, ale kod trzeba bylo uzupełniać spacjami do pełnych 15 znaków, żeby działało slightly smiling face Poprawiłem procedurę GET_ART_STRUKTURA_TOP_LIST - proszę zrestartować aplikację i taka gimnastyka przestanie być przy filtracji potrzebna","Technolog 63.2024.31.1"
+"60","10.09.2024","PRIMA- autonumeracja LZ","a jak nie chce autonumeracji to co ?
+
+wg. mnie tu jakis bład ","","Dodano nowy trigger TBIU_LISTA_ZAL_TYP_NULL i wystawiłem nowego exeka. Siedzi już w NEW_EXE. Puściłem przed chwilą Patcherem, więc za jakieś 15 minut wersja 60.2024.37.94. powinna być już do pobrania również przez klienta.","Golden Gate 60"
+"61","10.09.2024","etykiety wysyłkowe, powielanie się nazwy układu predefiniowanego","Zauważyłem że gdy na jednej liście załadunkowej (w tym przypadku jest to LZ ID 8967) są pozycje zaimportowane z układów predefiniowanych oraz spoza nich no to na te bez układów predefiniowanych (to te poniżej żółtej kreski na zrzucie ekranu) powiela się nazwa układu predefiniowanego ([frxEtykNaWyrob.''WGW_PREDEF_OPIS'']) z etykiety ją poprzedzającą, zaznaczyłem czerwoną ramką to pole na zrzucie ekranu.
+Sytuacja ma miejsce tylko przy generowaniu etykiet z poziomu Goldena, te z Printserwera drukują się prawidłowo.
+Załączam również plik wydruku z którego aktualnie korzystam.
+","","zmienna dla tego pola w procedurze GG_ETYK_WYSYLKOWA_LL nie była czyszczona, więc jeśli jakaś pozycja miała predefa, a poźniej następowały pozycje bez niego, to zmienna była zachowana dla kolejnych pozycji. To samo wyłapałem przy okazji dla pól WGW_PREDEF_KOD_PASKOWY i KOD_PASKOWY_PREDEF. Procedura poprawiona. Powinien wystarczyć restart formatki przeglądu.","Golden Gate 61.2024.31.47"
+"62","16.09.2024","SA_SAturn_Fakturowanie na podstawie WZK","w Saturn exe zafakturowaliśmy w opcji ,,fakturowanie na podstawie WZ” WZK 0013/9/2024 z magazynu 602-11-1. Utworzyła się faktura nr 012147/24/K. Zafakturowano 1 pozycję art. H265103 na ilość 2,539 m3 a nie zafakturowało drugiej pozycji na ilość 0,001 tego samego art.
+W opcji fakturowanie na podstawie WZ pokazuje iż zafakturowano całość.
+","","Problemy były dwa:
+1. W exeku przy zaznaczaniu pozycji przez CTRL+A zaznaczały się tylko te pozycje, na których różnica między ilością na dokumencie magazynowym, a ilością zafakturowaną przekraczała 0,009, więc ilość 0,001 się nie zaznaczała. Można było to ręcznie zaznaczyć jeszcze spacją przed wystawieniem faktury, ale, oczywiście, zwiększyłem czułość o 1 miejsce po przecinku, aby pod CTRL+A również się taka pozycja łapała.
+2. Trigger TAU_MAG_DOK_SPEC_MDN_STATUS oznaczał jako zafakturowane w całości te dokumenty, których różnica między sumaryczną ilością oraz ilością zafakturowaną ze wszystkich pozycji dokumentu była mniejsza niż 0,005. Tu również poprawiłem trigger zmniejszając czułość na różnicę o 1 miejsce po przecinku. Ten problem rozwiąże już sam restart aplikacji w dotychczasowej wersji - wystarczyła aktualizacja triggera. Nowy exek jest potrzebny, by pozycje z ilością 0,001 również zaznaczały się do zafakturowania przez CTRL+A.
+","Golden Gate 63.2024.31.1"
+"63","","Print server nie drukuje etykiet","Wersja Printservera 1.6.1.13 wywaliła nam błędy bezpośrednio po podmianie i restarcie. Nie mogliśmy drukować etykiet wysyłkowych.
+Chwilowo wróciliśmy do starszej wersji aby można było drukować etykiety.
+","","dodano w exe pole PRZEGZLECPROD_SPEC_ID, które można wyciągnąć na wydruk etykiety wysyłkowej. W związku z tym exek oczekiwał tego pola od procedury GG_ETYK_WYSYLKOWA, którą już Państwu zaktualizowałem zarówno na przedbackupie, jak i bazie żywej. Wersja 1.6.1.13 dla etykiet wysyłkowych nie powinna już wywoływać zgłaszanego tu błędu.",""
+"64","","","","","",""
+"65","","","","","",""
+"66","","","","","",""
+"67","","","","","",""
+"68","","","","","",""
+"69","","","","","",""
+"70","","","","","",""
+"71","","","","","",""
